@@ -5,6 +5,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
 import Stripe from "stripe";
+import userRoutes from "./routes/userRoutes.js";
 
 // 🔐 Încarcă variabilele din .env
 dotenv.config();
@@ -14,6 +15,7 @@ const app = express();
 // 🌍 Middleware-uri de bază
 app.use(cors());
 app.use(express.json());
+app.use("/api/users", userRoutes);
 
 // 🔑 Variabile de mediu
 const PORT = process.env.PORT || 5000;
@@ -97,6 +99,72 @@ app.post("/api/create-checkout-session", async (req, res) => {
     return res
       .status(500)
       .json({ error: "Eroare la crearea sesiunii de plată Stripe" });
+  }
+});
+// === Model User: email + isPremium ===
+const userSchema = new mongoose.Schema(
+  {
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+      lowercase: true,
+    },
+    isPremium: {
+      type: Boolean,
+      default: false,
+    },
+  },
+  { timestamps: true }
+);
+
+const User = mongoose.models.User || mongoose.model("User", userSchema);
+
+// === GET /api/users/:email -> status cont ===
+app.get("/api/users/:email", async (req, res) => {
+  try {
+    const email = (req.params.email || "").toLowerCase().trim();
+    if (!email) {
+      return res.status(400).json({ error: "Missing email" });
+    }
+
+    const user = await User.findOne({ email });
+
+    return res.json({
+      email,
+      isPremium: user?.isPremium || false,
+    });
+  } catch (err) {
+    console.error("GET /api/users/:email error:", err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+// === POST /api/users/premium -> setează / actualizează Premium ===
+// Body: { "email": "...", "isPremium": true }
+app.post("/api/users/premium", async (req, res) => {
+  try {
+    const email = (req.body.email || "").toLowerCase().trim();
+    const isPremium = !!req.body.isPremium;
+
+    if (!email) {
+      return res.status(400).json({ error: "Missing email" });
+    }
+
+    const user = await User.findOneAndUpdate(
+      { email },
+      { $set: { isPremium } },
+      { new: true, upsert: true }
+    );
+
+    return res.json({
+      email: user.email,
+      isPremium: user.isPremium,
+    });
+  } catch (err) {
+    console.error("POST /api/users/premium error:", err);
+    return res.status(500).json({ error: "Server error" });
   }
 });
 
