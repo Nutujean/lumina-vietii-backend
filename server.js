@@ -5,7 +5,6 @@ import cors from "cors";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
 import Stripe from "stripe";
-import userRoutes from "./routes/userRoutes.js";
 
 // 🔐 Încarcă variabilele din .env
 dotenv.config();
@@ -15,7 +14,6 @@ const app = express();
 // 🌍 Middleware-uri de bază
 app.use(cors());
 app.use(express.json());
-app.use("/api/users", userRoutes);
 
 // 🔑 Variabile de mediu
 const PORT = process.env.PORT || 5000;
